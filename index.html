@@ -57,6 +57,10 @@
     line-height: 1.6;
   }
   .wrap{ max-width: 980px; margin: 0 auto; padding: 40px 24px 80px; }
+  @media (max-width: 600px){
+    body{ font-size: 16.5px; }
+    .wrap{ padding: 24px 16px 64px; }
+  }
 
   h1,h2,h3{ font-family: "IBM Plex Sans KR", "Noto Sans KR", sans-serif; text-wrap: balance; }
   h1{ font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
@@ -88,6 +92,12 @@
 
   /* table */
   table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  @media (max-width: 600px){
+    table{ font-size:14.5px; }
+    th,td{ padding:11px 12px; }
+    .callout{ padding:16px 18px; }
+    .callout li .why{ font-size:13.5px; }
+  }
   .summary-table-wrap{ overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .summary-table-wrap table{ min-width: 560px; }
   th,td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
@@ -171,7 +181,7 @@
     <span><i class="swatch" style="background:var(--noise)"></i>의미없는질문(스쳐가는 말)</span>
   </div>
   <div class="chart-card">
-    <svg viewBox="0 0 880 340" width="100%" style="max-width:880px;height:auto;" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 880 340" width="880" height="340" style="display:block;" xmlns="http://www.w3.org/2000/svg">
   <line class="grid-line" x1="40" y1="300" x2="860" y2="300" stroke-width="1"/><text x="32" y="304" font-size="11" text-anchor="end">0</text><line class="grid-line" x1="40" y1="260" x2="860" y2="260" stroke-width="1"/><text x="32" y="264" font-size="11" text-anchor="end">20</text><line class="grid-line" x1="40" y1="220" x2="860" y2="220" stroke-width="1"/><text x="32" y="224" font-size="11" text-anchor="end">40</text><line class="grid-line" x1="40" y1="180" x2="860" y2="180" stroke-width="1"/><text x="32" y="184" font-size="11" text-anchor="end">60</text><line class="grid-line" x1="40" y1="140" x2="860" y2="140" stroke-width="1"/><text x="32" y="144" font-size="11" text-anchor="end">80</text><line class="grid-line" x1="40" y1="100" x2="860" y2="100" stroke-width="1"/><text x="32" y="104" font-size="11" text-anchor="end">100</text><line class="grid-line" x1="40" y1="60" x2="860" y2="60" stroke-width="1"/><text x="32" y="64" font-size="11" text-anchor="end">120</text><line class="grid-line" x1="40" y1="20" x2="860" y2="20" stroke-width="1"/><text x="32" y="24" font-size="11" text-anchor="end">140</text>
   <line class="axis-line" x1="40" y1="300" x2="860" y2="300" stroke-width="1"/>
   <rect x="275" y="212" width="90" height="88" fill="var(--ok)" rx="2"/><text x="320" y="260" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">44</text><rect x="275" y="100" width="90" height="110" fill="var(--noise)" rx="2"/><text x="320" y="159" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">55</text><rect x="275" y="92" width="90" height="6" fill="var(--stt)" rx="2"/><rect x="275" y="62" width="90" height="28" fill="var(--netfail)" rx="2"/><text x="320" y="80" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">14</text><text class="bar-label" x="320" y="57.99999999999997" font-size="13" text-anchor="middle">116건</text><text x="320" y="320" font-size="12.5" text-anchor="middle" font-weight="600">09/02</text><text x="320" y="335" font-size="11" text-anchor="middle" fill="var(--netfail)">실패 12%</text><rect x="405" y="204" width="90" height="96" fill="var(--ok)" rx="2"/><text x="450" y="256" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">48</text><rect x="405" y="98" width="90" height="104" fill="var(--noise)" rx="2"/><text x="450" y="154" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">52</text><rect x="405" y="82" width="90" height="14" fill="var(--stt)" rx="2"/><rect x="405" y="20" width="90" height="60" fill="var(--netfail)" rx="2"/><text x="450" y="54" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">30</text><text class="bar-label" x="450" y="16" font-size="13" text-anchor="middle">137건</text><text x="450" y="320" font-size="12.5" text-anchor="middle" font-weight="600">09/03</text><text x="450" y="335" font-size="11" text-anchor="middle" fill="var(--netfail)">실패 22%</text><rect x="535" y="204" width="90" height="96" fill="var(--ok)" rx="2"/><text x="580" y="256" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">48</text><rect x="535" y="130" width="90" height="72" fill="var(--noise)" rx="2"/><text x="580" y="170" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">36</text><rect x="535" y="112" width="90" height="16" fill="var(--stt)" rx="2"/><text x="580" y="124" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">8</text><rect x="535" y="58" width="90" height="52" fill="var(--netfail)" rx="2"/><text x="580" y="88" font-size="11" text-anchor="middle" fill="var(--surface)" font-weight="600">26</text><text class="bar-label" x="580" y="54" font-size="13" text-anchor="middle">118건</text><text x="580" y="320" font-size="12.5" text-anchor="middle" font-weight="600">09/04</text><text x="580" y="335" font-size="11" text-anchor="middle" fill="var(--netfail)">실패 22%</text>
