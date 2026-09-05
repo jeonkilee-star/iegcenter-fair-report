@@ -103,6 +103,17 @@
   .callout li b{ display:block; margin-bottom:3px; }
   .callout li .why{ color:var(--ink-2); font-size:13px; }
 
+  /* status list */
+  .status-list{ list-style:none; margin:0; padding:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .status-list li{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--grid); align-items:flex-start; }
+  .status-list li:last-child{ border-bottom:none; }
+  .status-badge{ flex:none; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; margin-top:1px; }
+  .status-badge.done{ background:var(--ok); color:var(--surface); }
+  .status-badge.pending{ background:var(--noise); color:var(--surface); }
+  .status-body b{ display:block; font-size:14px; margin-bottom:2px; }
+  .status-body span{ font-size:12.5px; color:var(--ink-2); }
+  .status-time{ flex:none; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; padding-top:2px; }
+
   /* detail log */
   details{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding: 4px 0; }
   summary{ cursor:pointer; padding:14px 18px; font-weight:600; font-size:14px; list-style:none; display:flex; align-items:center; justify-content:space-between; }
@@ -220,6 +231,30 @@
       </li>
     </ol>
   </div>
+
+  <h2>작업 진행 현황</h2>
+  <ul class="status-list">
+    <li>
+      <div class="status-badge done">✓</div>
+      <div class="status-body"><b>대화 371건(9/2~9/4) 원인별 분류 및 분석</b><span>정상답변 140 · 네트워크/API실패 70 · 음성인식오류 18 · 의미없는질문 143</span></div>
+      <div class="status-time">9/4</div>
+    </li>
+    <li>
+      <div class="status-badge done">✓</div>
+      <div class="status-body"><b>음성인식오류 분류 정교화 (2차 재검토 완료)</b><span>완전한 문장인데 누락됐던 8건 + 애매했던 3건 확정 반영, 총 18건으로 최종 확정</span></div>
+      <div class="status-time">9/5</div>
+    </li>
+    <li>
+      <div class="status-badge done">✓</div>
+      <div class="status-body"><b>System Instructions 실제 수정 완료 (관리자 대시보드 DB 반영 확인)</b><span>"응답 안 함" 상황을 진짜 인식 실패(잡음)와, 명확히 들었지만 응답 대상이 아닌 경우로 분리 — 후자는 "못 알아들었다"고 답하지 않도록 변경. DB updated_at 2026-09-05 04:19:18로 반영 확인됨</span></div>
+      <div class="status-time">9/5</div>
+    </li>
+    <li>
+      <div class="status-badge pending">!</div>
+      <div class="status-body"><b>현장 앱 재시작 대기 중</b><span>DB는 반영됐지만 태블릿 앱이 재시작 전까지는 예전 instructions로 계속 응답함. SV로보틱스 로고 2초 이상 길게 누르기 → 비밀번호 001122 → 왼쪽 아래 톱니바퀴 → 관리자 → 메인 화면 버튼으로 재시작 필요</span></div>
+      <div class="status-time">진행 대기</div>
+    </li>
+  </ul>
 
   <h2>전체 대화 로그</h2>
   <details>
