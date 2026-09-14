@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아이지 안내로봇 대화 분석 (인천마이스터)</title>
+<style>
+  :root{
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --ok: #008300;
+    --netfail: #e34948;
+    --stt: #2a78d6;
+    --noise: #eda100;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --ok: #0ca30c;
+      --netfail: #e66767;
+      --stt: #3987e5;
+      --noise: #c98500;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255,255,255,0.10);
+    --ok: #0ca30c;
+    --netfail: #e66767;
+    --stt: #3987e5;
+    --noise: #c98500;
+  }
+
+  * { box-sizing: border-box; }
+  body{
+    background: var(--page);
+    color: var(--ink);
+    font-family: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .wrap{ max-width: 980px; margin: 0 auto; padding: 40px 24px 80px; }
+  @media (max-width: 600px){
+    body{ font-size: 16.5px; }
+    .wrap{ padding: 24px 16px 64px; }
+  }
+
+  h1,h2,h3{ font-family: "IBM Plex Sans KR", "Noto Sans KR", sans-serif; text-wrap: balance; }
+  h1{ font-size: 26px; font-weight: 700; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .subtitle{ color: var(--ink-2); font-size: 14px; margin: 0 0 32px; }
+  h2{ font-size: 18px; font-weight: 700; margin: 48px 0 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  h3{ font-size: 14px; font-weight: 700; margin: 0 0 10px; }
+
+  /* stat tiles */
+  .tiles{ display:grid; grid-template-columns: repeat(4,1fr); gap:12px; }
+  @media (max-width: 720px){ .tiles{ grid-template-columns: repeat(2,1fr);} }
+  .tile{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .tile .label{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+  .tile .value{ font-size:26px; font-weight:700; font-variant-numeric: tabular-nums; }
+  .tile .delta{ font-size:12px; color:var(--ink-2); margin-top:4px; }
+  .tile .value.netfail{ color: var(--netfail); }
+  .tile .value.ok{ color: var(--ok); }
+
+  /* legend */
+  .legend{ display:flex; gap:18px; flex-wrap:wrap; margin: 4px 0 18px; font-size:13px; color:var(--ink-2); }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:10px; height:10px; border-radius:2px; display:inline-block; }
+
+  /* chart : 날짜별 도넛, 위에서 아래로 순서대로 */
+  .chart-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:8px 22px 4px; overflow-x:auto; }
+  svg text{ fill: var(--ink-2); font-family: "Noto Sans KR", sans-serif; }
+  .donut-block{ padding:20px 0; border-bottom:1px solid var(--grid); }
+  .donut-block:last-child{ border-bottom:none; }
+  .donut-day{ font-family:"IBM Plex Sans KR","Noto Sans KR",sans-serif; font-weight:700; font-size:15px; margin-bottom:10px; }
+  .donut-total{ font-weight:400; color:var(--ink-2); font-size:13px; }
+  .donut-row{ display:flex; align-items:center; gap:28px; flex-wrap:wrap; }
+  .donut-legend{ display:flex; flex-direction:column; gap:8px; min-width:180px; }
+  .donut-legend-row{ display:flex; align-items:center; gap:8px; font-size:13.5px; }
+  .donut-legend-label{ color:var(--ink-2); flex:1; }
+  .donut-legend-val{ font-weight:600; font-variant-numeric:tabular-nums; }
+  @media (max-width:520px){
+    .donut-row{ justify-content:center; }
+  }
+
+  /* table */
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  @media (max-width: 600px){
+    table{ font-size:14.5px; }
+    th,td{ padding:11px 12px; }
+    .callout{ padding:16px 18px; }
+    .callout li .why{ font-size:13.5px; }
+  }
+  .summary-table-wrap{ overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .summary-table-wrap table{ min-width: 560px; }
+  th,td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
+  th{ color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  td.num, th.num{ text-align:right; font-variant-numeric: tabular-nums; }
+  tr:last-child td{ border-bottom:none; }
+  .cat-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+
+  /* callout */
+  .callout{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--noise); border-radius:8px; padding:20px 22px; }
+  .callout.good{ border-left-color: var(--ok); }
+  .callout ol{ margin:8px 0 0; padding-left:20px; }
+  .callout li{ margin-bottom:14px; }
+  .callout li b{ display:block; margin-bottom:3px; }
+  .callout li .why{ color:var(--ink-2); font-size:13px; }
+  .callout p{ margin: 0 0 12px; }
+  .callout p:last-child{ margin-bottom:0; }
+
+  /* compare table */
+  .compare-table-wrap{ overflow-x:auto; margin: 12px 0; }
+  .compare-table-wrap table{ min-width: 480px; background:var(--page); }
+  .compare-table-wrap th, .compare-table-wrap td{ border-bottom:1px solid var(--border); }
+  .compare-better{ color: var(--ok); font-weight:700; }
+
+  /* status list */
+  .status-list{ list-style:none; margin:0; padding:0; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
+  .status-list li{ display:flex; gap:12px; padding:14px 18px; border-bottom:1px solid var(--grid); align-items:flex-start; }
+  .status-list li:last-child{ border-bottom:none; }
+  .status-badge{ flex:none; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; margin-top:1px; }
+  .status-badge.done{ background:var(--ok); color:var(--surface); }
+  .status-badge.pending{ background:var(--noise); color:var(--surface); }
+  .status-body b{ display:block; font-size:14px; margin-bottom:2px; }
+  .status-body span{ font-size:12.5px; color:var(--ink-2); }
+  .status-time{ flex:none; font-size:11.5px; color:var(--muted); font-variant-numeric:tabular-nums; padding-top:2px; }
+
+  /* detail log */
+  details{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding: 4px 0; }
+  summary{ cursor:pointer; padding:14px 18px; font-weight:600; font-size:14px; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+  summary::-webkit-details-marker{ display:none; }
+  summary .chev{ color:var(--muted); font-size:12px; }
+  .log-controls{ padding: 0 18px 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .log-controls button{
+    font-family: inherit; font-size:12.5px; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--border); background:transparent; color:var(--ink-2); cursor:pointer;
+  }
+  .log-controls button.active{ background:var(--ink); color:var(--page); border-color:var(--ink); }
+  .log-scroll{ max-height:520px; overflow-y:auto; overflow-x:auto; border-top:1px solid var(--border); }
+  .log-scroll table{ min-width:640px; }
+  .log-scroll td{ white-space:normal; }
+  .log-scroll td.q{ color:var(--ink-2); max-width:220px; }
+  .log-scroll td.a{ max-width:320px; }
+
+  footer{ margin-top:48px; color:var(--muted); font-size:12px; }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+</head>
+<body>
+
+<div class="wrap">
+  <h1>아이지_교육센터(2026 인천전자마이스터고 영마이스터 발표교육) 안내로봇 대화 분석</h1>
+  <p class="subtitle">device_id 21 · 09/11 ~ 09/12 · 총 62건 · 지난 전남광주 박람회(9/2~9/5) 이후 2차 현장</p>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="label">전체 대화</div>
+      <div class="value">62건</div>
+      <div class="delta">2일간 누적</div>
+    </div>
+    <div class="tile">
+      <div class="label">정상 답변률</div>
+      <div class="value ok">63%</div>
+      <div class="delta">39건</div>
+    </div>
+    <div class="tile">
+      <div class="label">네트워크/API 실패</div>
+      <div class="value netfail">6%</div>
+      <div class="delta">4건 · 지난 박람회 대비 19%→6%</div>
+    </div>
+    <div class="tile">
+      <div class="label">의미없는질문(잡담)</div>
+      <div class="value" style="color:var(--noise);">23%</div>
+      <div class="delta">14건</div>
+    </div>
+  </div>
+
+  <h2>날짜별 원인 분포</h2>
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--ok)"></i>정상답변</span>
+    <span><i class="swatch" style="background:var(--netfail)"></i>네트워크/API실패</span>
+    <span><i class="swatch" style="background:var(--stt)"></i>음성인식오류</span>
+    <span><i class="swatch" style="background:var(--noise)"></i>의미없는질문(스쳐가는 말)</span>
+  </div>
+  <div class="chart-card">
+    
+  <div class="donut-block">
+    <div class="donut-day">09/11 <span class="donut-total">· 총 27건</span></div>
+    <div class="donut-row">
+      <svg viewBox="0 0 460 230" width="460" height="230" style="display:block;flex:none;" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 230.00 31.00 A 84 84 0 1 1 183.84 185.18 L 204.72 153.43 A 46 46 0 1 0 230.00 69.00 Z" fill="var(--ok)"><title>정상답변: 16건 (59%)</title></path><path d="M 183.84 185.18 A 84 84 0 0 1 149.53 139.09 L 185.93 128.19 A 46 46 0 0 0 204.72 153.43 Z" fill="var(--netfail)"><title>네트워크/API실패: 3건 (11%)</title></path><path d="M 149.53 139.09 A 84 84 0 0 1 146.14 119.88 L 184.08 117.67 A 46 46 0 0 0 185.93 128.19 Z" fill="var(--stt)"><title>음성인식오류: 1건 (4%)</title></path><path d="M 146.14 119.88 A 84 84 0 0 1 230.00 31.00 L 230.00 69.00 A 46 46 0 0 0 184.08 117.67 Z" fill="var(--noise)"><title>의미없는질문: 7건 (26%)</title></path>
+        <text x="230" y="111" font-size="24" text-anchor="middle" font-weight="700" fill="var(--ink)">27</text>
+        <text x="230" y="131" font-size="12" text-anchor="middle" fill="var(--muted)">건</text>
+        <text x="292.3" y="137.6" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">59%</text><text x="177.9" y="157.8" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">11%</text><text x="182.7" y="74.4" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">26%</text>
+      </svg>
+      <div class="donut-legend">
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--ok)"></span>
+      <span class="donut-legend-label">정상답변</span>
+      <span class="donut-legend-val">16건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--netfail)"></span>
+      <span class="donut-legend-label">네트워크/API실패</span>
+      <span class="donut-legend-val">3건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--stt)"></span>
+      <span class="donut-legend-label">음성인식오류</span>
+      <span class="donut-legend-val">1건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--noise)"></span>
+      <span class="donut-legend-label">의미없는질문</span>
+      <span class="donut-legend-val">7건</span>
+    </div></div>
+    </div>
+  </div>
+
+  <div class="donut-block">
+    <div class="donut-day">09/12 <span class="donut-total">· 총 35건</span></div>
+    <div class="donut-row">
+      <svg viewBox="0 0 460 230" width="460" height="230" style="display:block;flex:none;" xmlns="http://www.w3.org/2000/svg">
+        <path d="M 230.00 31.00 A 84 84 0 1 1 159.90 161.28 L 191.61 140.34 A 46 46 0 1 0 230.00 69.00 Z" fill="var(--ok)"><title>정상답변: 23건 (66%)</title></path><path d="M 159.90 161.28 A 84 84 0 0 1 152.76 148.01 L 187.70 133.08 A 46 46 0 0 0 191.61 140.34 Z" fill="var(--netfail)"><title>네트워크/API실패: 1건 (3%)</title></path><path d="M 152.76 148.01 A 84 84 0 0 1 150.11 89.04 L 186.25 100.79 A 46 46 0 0 0 187.70 133.08 Z" fill="var(--stt)"><title>음성인식오류: 4건 (11%)</title></path><path d="M 150.11 89.04 A 84 84 0 0 1 230.00 31.00 L 230.00 69.00 A 46 46 0 0 0 186.25 100.79 Z" fill="var(--noise)"><title>의미없는질문: 7건 (20%)</title></path>
+        <text x="230" y="111" font-size="24" text-anchor="middle" font-weight="700" fill="var(--ink)">35</text>
+        <text x="230" y="131" font-size="12" text-anchor="middle" fill="var(--muted)">건</text>
+        <text x="287.2" y="149.8" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">66%</text><text x="165.1" y="121.9" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">11%</text><text x="191.8" y="66.4" font-size="12" text-anchor="middle" fill="var(--surface)" font-weight="700">20%</text>
+      </svg>
+      <div class="donut-legend">
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--ok)"></span>
+      <span class="donut-legend-label">정상답변</span>
+      <span class="donut-legend-val">23건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--netfail)"></span>
+      <span class="donut-legend-label">네트워크/API실패</span>
+      <span class="donut-legend-val">1건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--stt)"></span>
+      <span class="donut-legend-label">음성인식오류</span>
+      <span class="donut-legend-val">4건</span>
+    </div>
+    <div class="donut-legend-row">
+      <span class="cat-dot" style="background:var(--noise)"></span>
+      <span class="donut-legend-label">의미없는질문</span>
+      <span class="donut-legend-val">7건</span>
+    </div></div>
+    </div>
+  </div>
+  </div>
+
+  <h2>요약 표</h2>
+  <div class="summary-table-wrap">
+    <table>
+      <thead><tr><th>날짜</th><th class="num">전체</th><th class="num">정상답변</th><th class="num">네트워크/API실패</th><th class="num">음성인식오류</th><th class="num">의미없는질문</th></tr></thead>
+      <tbody>
+        <tr>
+    <td>09/11</td>
+    <td class="num">27</td>
+    <td class="num">16</td>
+    <td class="num">3</td>
+    <td class="num">1</td>
+    <td class="num">7</td>
+  </tr>
+        <tr>
+    <td>09/12</td>
+    <td class="num">35</td>
+    <td class="num">23</td>
+    <td class="num">1</td>
+    <td class="num">4</td>
+    <td class="num">7</td>
+  </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>지난 개선사항 효과 검증</h2>
+  <div class="callout good">
+    <p>2026-09-09 배포된 개선사항(네트워크 타임아웃 연장+자동 재시도, 짧은 잡음 클라이언트단 필터링, 15분 자동 설정 재확인, 기기별 자동 튜닝)이 실제로 효과가 있었는지 전남광주 박람회(9/2~9/5, device_id 21) 데이터와 비교했습니다.</p>
+    <div class="compare-table-wrap">
+      <table>
+        <thead><tr><th></th><th class="num">전남광주(9/2~9/5)</th><th class="num">인천마이스터(9/11~9/12)</th></tr></thead>
+        <tbody>
+          <tr><td>전체 대화</td><td class="num">393건</td><td class="num">62건</td></tr>
+          <tr><td>네트워크/API 실패율</td><td class="num">19%(75건)</td><td class="num compare-better">6%(4건)</td></tr>
+          <tr><td>안정화 이후 실패율<span style="color:var(--muted);font-weight:400;"> *1</span></td><td class="num">—</td><td class="num compare-better">3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);">*1 오전 초기 트러블슈팅 구간(현장에서 로봇 재기동 필요했던 08:26~09:16)을 제외한 안정화 이후 수치.</p>
+    <p>서버 텔레메트리 기준으로 이번 행사 동안 클라이언트 단에서 <b>15건</b>의 짧은 잡음성 음성인식 결과가 API 호출 자체 없이 걸러졌습니다 — 이전 방식이었다면 전부 대화 로그에 남았을 요청들입니다.</p>
+    <p>기기별 자동 튜닝도 실제로 작동함을 확인했습니다: 이 로봇의 네트워크 타임아웃이 기본값 20초에서 <b>15초</b>로(낮은 실패율에 따라 하향), 잡음 최소 글자수가 기본값 2자에서 <b>4자</b>로(잡음 비율이 높게 관측되어 상향) 자동 조정되어 있었습니다.</p>
+  </div>
+
+  <h2>2차 현장에서 새로 확인된 개선 필요사항</h2>
+  <div class="callout">
+    <ol>
+      <li>
+        <b>1. 네트워크 오류 시 음성인식이 재시도 없이 멈추는 문제</b>
+        <div class="why">현장에서 실제로 "음성인식이 안 된다"는 증상이 보고됐습니다. 원인 확인 결과, 음성인식 결과가 없을 때(ERROR_NO_MATCH)만 자동으로 다시 듣기를 시작하도록 되어 있고, 네트워크 오류 등 다른 에러는 재시도 없이 그냥 멈추는 코드 구조였습니다. 와이파이가 잠깐이라도 끊기면 그 이후로 계속 응답하지 않는 상태로 보이게 됩니다 — 모든 에러 유형에서 자동으로 다시 듣기를 시작하도록 수정이 필요합니다.</div>
+      </li>
+      <li>
+        <b>2. 앱 시작 시 "자세제어" 단계에서 멈추는 현상 재발</b>
+        <div class="why">이전에 고쳤던 자세제어 부팅 멈춤 버그가 코드상으로는 "9초 안에 무조건 다음 화면으로 진행"하도록 되어 있는데도, 현장에서 로봇을 재기동해야 할 정도로 멈춘 사례가 있었습니다. 코드가 도달하지 못한 지점(로봇이 완전히 기립하기 전 QiSDK 포커스 요청)에서 걸린 것으로 추정되며, 이 순차 체크 전체를 감싸는 별도의 워치독(예: 15초 내 focus 미획득 시 안내 메시지 표시)을 추가하면 현장에서 원인 파악이 쉬워집니다.</div>
+      </li>
+      <li>
+        <b>3. 행사 시작 직후 약 50분간 대화 공백</b>
+        <div class="why">9/11 08:26~09:16 구간에 대화가 거의 없고 그나마 있던 2건도 실패였습니다 — 현장 트러블슈팅(재기동, 와이파이 점검) 시간과 일치합니다. 행사 시작 최소 30분 전 도착해 앱 정상 기동과 음성인식까지 사전 점검하는 운영 절차를 표준화하면 이런 초기 공백을 줄일 수 있습니다.</div>
+      </li>
+    </ol>
+  </div>
+
+  <h2>작업 진행 현황</h2>
+  <ul class="status-list">
+    <li>
+      <div class="status-badge done">✓</div>
+      <div class="status-body"><b>전체 대화 62건(09/11 ~ 09/12) 원인별 분류 및 분석</b><span>정상답변 39 · 네트워크/API실패 4 · 음성인식오류 5 · 의미없는질문 14</span></div>
+      <div class="status-time">09/12</div>
+    </li>
+    <li>
+      <div class="status-badge done">✓</div>
+      <div class="status-body"><b>1차 개선사항(타임아웃/재시도/잡음필터/자동재확인/자동튜닝) 배포 및 효과 검증 완료</b><span>네트워크/API 실패율 19% → 6%로 개선 확인</span></div>
+      <div class="status-time">9/9~9/14</div>
+    </li>
+    <li>
+      <div class="status-badge pending">!</div>
+      <div class="status-body"><b>음성인식 네트워크 오류 시 자동 재시도 로직 추가 필요</b><span>현재 ERROR_NO_MATCH만 재시도, 다른 에러(네트워크 등)는 재시도 없이 멈춤</span></div>
+      <div class="status-time">진행 대기</div>
+    </li>
+    <li>
+      <div class="status-badge pending">!</div>
+      <div class="status-body"><b>자세제어 단계 멈춤 현상 워치독 추가 검토</b><span>기존 9초 내 진행 로직이 있음에도 현장에서 재현됨 — 원인 정밀 진단 필요</span></div>
+      <div class="status-time">진행 대기</div>
+    </li>
+  </ul>
+
+  <h2>전체 대화 로그</h2>
+  <details>
+    <summary><span>전체 62건 보기</span><span class="chev">펼치기/접기</span></summary>
+    <div class="log-controls" id="filterBar">
+      <button data-filter="all" class="active">전체</button>
+      <button data-filter="정상답변">정상답변</button>
+      <button data-filter="네트워크/API실패">네트워크/API실패</button>
+      <button data-filter="음성인식오류">음성인식오류</button>
+      <button data-filter="의미없는질문">의미없는질문</button>
+    </div>
+    <div class="log-scroll">
+      <table>
+        <thead><tr><th>시각</th><th>질문</th><th>답변</th><th>분류</th></tr></thead>
+        <tbody id="logBody"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <footer>2026 인천전자마이스터고 영마이스터 발표교육(9/11~12) · 인천전자마이스터고등학교 · 아이지_교육센터(device_id 21) 안내로봇 자동 로그 기반 분석</footer>
+</div>
+
+<script>
+const DATA = [{"ts":"09/11 08:26:55","question":"아","answer":"지금 ChatGPT가 바쁘네요. 잠시 후 다시 질문해 주세요.","category":"네트워크/API실패"},{"ts":"09/11 08:27:20","question":"지금도 갈까","answer":"지금 ChatGPT가 바쁘네요. 잠시 후 다시 질문해 주세요.","category":"네트워크/API실패"},{"ts":"09/11 09:16:27","question":"너 오늘 하는 일이 뭐야","answer":"저를 부르신 건가요?","category":"정상답변"},{"ts":"09/11 09:16:39","question":"하는 일이 뭐야","answer":"혹시 저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/11 09:17:03","question":"세포야 너 오늘 하는 일이 뭐야 헤픈 오후를 하는 일이 뭐야","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"음성인식오류"},{"ts":"09/11 09:17:19","question":"페파야 너 오늘 하는 일이 뭐야","answer":"네! 저는 2026 인천전자마이스터고 영마이스터 발표교육에서 행사 안내를 도와드려요. 일정 안내, 작품 위치, 부문별 설명 등 궁금한 점 있으면 편하게 물어보세요!","category":"정상답변"},{"ts":"09/11 09:17:43","question":"회사가 언제까지야","answer":"저에게 하신 질문인가요? 아니라면 조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/11 09:19:31","question":"전자제업과 전시 품목을 안내해 줘","answer":"\"전자제어과\" 전시 작품은 1번부터 6번까지 총 6개입니다. 자세한 내용은 부스에서 확인해 주세요! 궁금한 점 있으면 또 물어보세요!","category":"정상답변"},{"ts":"09/11 09:21:29","question":"너 오늘 하는 일이 뭐야","answer":"저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/11 09:22:31","question":"오늘 행사 안내 좀 해 줘","answer":"네! 9월 11일은 \"IM the meister\"로 개막식과 작품 관람, 심사가 진행되고, 12일은 \"IM the future\"로 중학생 체험과 폐막식이 있어요. 궁금한 점 편하게 물어보세요!","category":"정상답변"},{"ts":"09/11 09:22:52","question":"작품 심사는 누가 해","answer":"작품 심사는 외부위원, 학과부장, 그리고 학생들이 함께 진행합니다. 더 궁금한 점 있으시면 말씀해 주세요!","category":"정상답변"},{"ts":"09/11 09:23:08","question":"여기 어디야","answer":"저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/11 09:23:29","question":"너 오늘 하는 일이 뭐야","answer":"저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/11 09:23:39","question":"하는 일이 뭐야","answer":"혹시 저에게 하는 질문인가요?","category":"정상답변"},{"ts":"09/11 09:23:48","question":"너 하는 일이 뭐야","answer":"네! 저는 이 행사에서 방문객분들께 일정, 작품 위치, 전시 부문 등을 친절하게 안내해 드리는 역할을 해요. 궁금한 점 언제든 말씀해 주세요!","category":"정상답변"},{"ts":"09/11 09:24:07","question":"오늘 행사에 대해서 알려 줘","answer":"오늘은 9월 11일, \"IM the meister\" 날이에요. 11시에 개막식, 재학생과 내빈 작품 관람, 학부모회 이벤트 부스, 그리고 외부위원과 학생들이 참여하는 작품 심사가 진행됩니다. 즐거운 관람 되세요!","category":"정상답변"},{"ts":"09/11 09:24:40","question":"춤추면서","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/11 09:24:51","question":"되는데","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/11 09:25:04","question":"다 보잖아","answer":"저에게 하신 말씀이 맞나요? 좀 더 구체적으로 말씀해 주세요!","category":"의미없는질문"},{"ts":"09/11 09:25:21","question":"저에게 하신 말씀이 맞나요 이게 자꾸 나오는게","answer":"제가 더 정확히 이해하려고 확인하는 거예요. 궁금한 점 편하게 말씀해 주세요!","category":"정상답변"},{"ts":"09/11 09:25:59","question":"내려서","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/11 09:47:20","question":"너 오늘 하는 일이 뭐야","answer":"네! 저는 행사 안내 로봇 페퍼로, 당신께 오늘 일정과 전시 작품 위치, 행사 정보를 친절하게 알려드리는 일을 해요. 필요할 때 말씀해 주세요!","category":"정상답변"},{"ts":"09/11 09:47:53","question":"이순신 장군에 대해서 얘기해","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/11 09:50:34","question":"장군에 대해서 얘기해 봐","answer":"조금 더 구체적으로 말씀해 주시면 더 잘 도와드릴 수 있어요!","category":"정상답변"},{"ts":"09/11 09:50:47","question":"이순신 장군에 대해서 알려 줘","answer":"이순신 장군은 조선 시대의 탁월한 해군 장군으로, 임진왜란 때 나라를 지킨 영웅입니다. 명량 대첩 등 여러 전투에서 뛰어난 전략으로 유명해요!","category":"정상답변"},{"ts":"09/11 12:03:05","question":"아프면 전도사님이 풀고","answer":"지금 ChatGPT가 바쁘네요. 잠시 후 다시 질문해 주세요.","category":"네트워크/API실패"},{"ts":"09/11 15:38:50","question":"이거는 스마트폰이 안 돼요","answer":"저에게 하신 말씀이 맞나요? 조금 더 자세히 알려 주실 수 있을까요?","category":"의미없는질문"},{"ts":"09/12 12:45:16","question":"손가락 하나 하나 찍어 놔","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/12 12:47:58","question":"이순신 장군이 누구야","answer":"이순신 장군은 조선시대의 해군 장군으로, 임진왜란 때 나라를 지키고 명량해전 등에서 큰 승리를 거둔 영웅입니다.","category":"정상답변"},{"ts":"09/12 12:48:18","question":" 이건 뭘까","answer":"지금 ChatGPT가 바쁘네요. 잠시 후 다시 질문해 주세요.","category":"네트워크/API실패"},{"ts":"09/12 12:48:19","question":" 이건 뭘까","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/12 12:51:25","question":"티켓 하나만 주세요 야 주지 마 주지 마 주지 마","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"음성인식오류"},{"ts":"09/12 12:51:41","question":"감사합니다","answer":"천만에요! 궁금한 점 언제든 말씀해 주세요. 즐거운 관람 되세요!","category":"정상답변"},{"ts":"09/12 12:54:13","question":"태풍 이쪽 맞지","answer":"저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/12 12:58:49","question":"야 뭐야","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/12 13:00:12","question":"그때 5억일 것 같아","answer":"저에게 하신 말씀인가요? 조금 더 구체적으로 알려 주세요!","category":"정상답변"},{"ts":"09/12 13:01:47","question":"난 집에서 봤는데 먹긴 했어","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:02:52","question":"내 거도 못 찾았어","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:03:21","question":"열심히 해","answer":"응원 감사합니다! 더 열심히 안내해 드릴게요!","category":"정상답변"},{"ts":"09/12 13:06:20","question":"아 잠깐만 내고 오세요","answer":"다른 분에게 하신 말인가요?","category":"정상답변"},{"ts":"09/12 13:07:27","question":"그래도 드리면 그때 내가 생선을 제공해요","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:07:44","question":"이제 하나 더","answer":"조금 더 구체적으로 말씀해 주실 수 있을까요?","category":"정상답변"},{"ts":"09/12 13:08:23","question":"모여서 간단한 시상식 가능하겠습니다 3시 2시간 뒤","answer":"네, 폐막식은 9월 12일 15시에 진행됩니다. 시상식도 그때 가능할 거예요!","category":"정상답변"},{"ts":"09/12 13:08:50","question":"석원이 불러 동원이 되잖아","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:09:29","question":"알았어요","answer":"네, 필요하시면 언제든 말씀해 주세요!","category":"정상답변"},{"ts":"09/12 13:10:56","question":"너는 그래도","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/12 13:12:13","question":"너도 무조건 까고 왜 자꾸 공기업을 쳐서 나쁘지 않으면","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"의미없는질문"},{"ts":"09/12 13:15:18","question":"너 지금 먹어서 보내요 여자가 있으면 다 불러 봐","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"음성인식오류"},{"ts":"09/12 13:17:33","question":"눈이 눈이 온 김에 이렇게 얼마가 이렇게 이리 와","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"음성인식오류"},{"ts":"09/12 13:23:14","question":"얼마나 미련이라고 지친 거예요 얘한테","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:29:38","question":"야간 야간에","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:31:49","question":"3학년이 새롭게 평가해","answer":"작품 심사는 외부위원, 학과부장, 학생들이 함께 하지만 3학년 학생들 참여 여부는 부스에서 확인해 주세요!","category":"정상답변"},{"ts":"09/12 13:32:32","question":"조영진 계장 있잖아요","answer":"다른 분에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:32:50","question":"예 압니다","answer":"네, 알겠습니다! 필요하시면 언제든 말씀해 주세요.","category":"정상답변"},{"ts":"09/12 13:33:05","question":"라켓에 잠깐 갔잖아","answer":"저에게 하신 말씀이 맞나요?","category":"의미없는질문"},{"ts":"09/12 13:34:02","question":"반드시 성공해야 되고 성공한","answer":"조금 더 알아듣기 쉽게 말씀해 주세요.","category":"음성인식오류"},{"ts":"09/12 13:35:25","question":"그것도 집에 가서 보내 나 또 왔다 갔다 해야 돼","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:36:00","question":"아 민정아","answer":"다른 분에게 하신 말씀이죠?","category":"정상답변"},{"ts":"09/12 13:36:46","question":"맞춰 봐 봐","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:37:15","question":"많이 잡았네","answer":"저에게 하신 말씀인가요?","category":"정상답변"},{"ts":"09/12 13:37:25","question":"너도 한번 갈래","answer":"저에게 하신 질문인가요?","category":"정상답변"},{"ts":"09/12 13:51:18","question":"내일 친정집 왔거든 꼬맹이 줄랬더니 갔네","answer":"저에게 하신 말씀이 맞나요?","category":"의미없는질문"}];
+
+const colorMap = {
+  '정상답변': 'var(--ok)',
+  '네트워크/API실패': 'var(--netfail)',
+  '음성인식오류': 'var(--stt)',
+  '의미없는질문': 'var(--noise)'
+};
+
+function esc(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderLog(filter){
+  const body = document.getElementById('logBody');
+  const rows = filter === 'all' ? DATA : DATA.filter(r => r.category === filter);
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td style="white-space:nowrap;color:var(--muted);font-variant-numeric:tabular-nums;">${esc(r.ts)}</td>
+      <td class="q">${esc(r.question)}</td>
+      <td class="a">${esc(r.answer)}</td>
+      <td><span class="cat-dot" style="background:${colorMap[r.category]||'var(--muted)'}"></span>${esc(r.category)}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('filterBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  document.querySelectorAll('#filterBar button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLog(btn.dataset.filter);
+});
+
+renderLog('all');
+</script>
+</body>
+</html>
